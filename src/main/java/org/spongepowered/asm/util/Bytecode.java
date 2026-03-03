@@ -464,7 +464,7 @@ public final class Bytecode {
         } else if (node instanceof InvokeDynamicInsnNode) {
             InvokeDynamicInsnNode idc = (InvokeDynamicInsnNode)node;
             out += String.format("[%s] %s%s { %s %s::%s%s }", Bytecode.getOpcodeName(node), idc.name, idc.desc,
-                    Bytecode.getOpcodeName(idc.bsm.getTag(), "H_GETFIELD", 1), idc.bsm.getOwner(), idc.bsm.getName(), idc.bsm.getDesc());
+                    OpcodeNames.getOpcodeName(idc.bsm.getTag(), "H_GETFIELD", 1), idc.bsm.getOwner(), idc.bsm.getName(), idc.bsm.getDesc());
         } else if (node instanceof LineNumberNode) {
             LineNumberNode ln = (LineNumberNode)node;
             out += String.format("LINE=[%d] LABEL=[%s]", ln.line, ln.start.getLabel());
@@ -473,7 +473,7 @@ public final class Bytecode {
         } else if (node instanceof IntInsnNode) {
             out += (((IntInsnNode)node).operand);
         } else if (node instanceof FrameNode) {
-            out += String.format("[%s] ", Bytecode.getOpcodeName(((FrameNode)node).type, "H_INVOKEINTERFACE", -1));
+            out += String.format("[%s] ", OpcodeNames.getOpcodeName(((FrameNode)node).type, "H_INVOKEINTERFACE", -1));
         } else if (node instanceof TypeInsnNode) {
             out += String.format("[%s] %s", Bytecode.getOpcodeName(node), ((TypeInsnNode)node).desc);
         } else {
@@ -503,31 +503,9 @@ public final class Bytecode {
      *      the {@link Opcodes} class have the same value as opcodes
      */
     public static String getOpcodeName(int opcode) {
-        return Bytecode.getOpcodeName(opcode, "UNINITIALIZED_THIS", 1);
+        return OpcodeNames.getOpcodeName(opcode, "UNINITIALIZED_THIS", 1);
     }
 
-    private static String getOpcodeName(int opcode, String start, int min) {
-        if (opcode >= min) {
-            boolean found = false;
-            
-            try {
-                for (java.lang.reflect.Field f : Opcodes.class.getDeclaredFields()) {
-                    if (!found && !f.getName().equals(start)) {
-                        continue;
-                    }
-                    found = true;
-                    if (f.getType() == Integer.TYPE && f.getInt(null) == opcode) {
-                        return f.getName();
-                    }
-                }
-            } catch (Exception ex) {
-                // derp
-            }
-        }        
-        
-        return opcode >= 0 ? String.valueOf(opcode) : "UNKNOWN";
-    }
-    
     /**
      * Uses reflection to find a matching constant in the {@link Opcodes}
      * interface for the specified opcode name. Supported formats are raw
@@ -555,28 +533,8 @@ public final class Bytecode {
         if (!opcodeName.matches("^[A-Z][A-Z0-9_]+$")) {
             return -1;
         }
-        
-        return Bytecode.parseOpcodeName(opcodeName, "UNINITIALIZED_THIS", 1);
-    }
 
-    private static int parseOpcodeName(String opcodeName, String start, int min) {
-        boolean found = false;
-        
-        try {
-            for (java.lang.reflect.Field f : Opcodes.class.getDeclaredFields()) {
-                if (!found && !f.getName().equals(start)) {
-                    continue;
-                }
-                found = true;
-                if (f.getType() == Integer.TYPE && f.getName().equalsIgnoreCase(opcodeName)) {
-                    return f.getInt(null);
-                }
-            }
-        } catch (Exception ex) {
-            // well this is embarrassing
-        }
-        
-        return -1;
+        return OpcodeNames.parseOpcodeName(opcodeName, "UNINITIALIZED_THIS");
     }
 
     /**
