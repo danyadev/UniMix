@@ -449,7 +449,6 @@ ext.excludePomDeps = [
     'mockito-core',
     'mixin-asm-debug-all',
     'log4j-core',
-    'guava',
     'gson'
 ]
 
