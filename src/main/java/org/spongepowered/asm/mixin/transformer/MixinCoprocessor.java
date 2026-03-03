@@ -25,7 +25,9 @@
 package org.spongepowered.asm.mixin.transformer;
 
 import org.objectweb.asm.tree.ClassNode;
+import org.spongepowered.asm.logging.ILogger;
 import org.spongepowered.asm.mixin.transformer.MixinConfig.IListener;
+import org.spongepowered.asm.service.MixinService;
 
 /**
  * Coprocessors are parts of the mixin pipeline which aren't involved in
@@ -33,11 +35,10 @@ import org.spongepowered.asm.mixin.transformer.MixinConfig.IListener;
  * mixins.
  * 
  * <p>Such tasks as {@link MixinCoprocessorAccessor making accessor mixins
- * loadable (and transforming the accessors therein)}, {@link
- * MixinCoprocessorSyntheticInner exposing synthetic inner classes to all
- * consumers} and {@link MixinCoprocessorNestHost applying nest member
- * attributes to nest hosts which may themselves not be mixin targets} are
- * handled by different coprocessors.</p>
+ * loadable (and transforming the accessors therein)}, and {@link
+ * MixinCoprocessorNestHost applying nest member attributes to nest hosts
+ * which may themselves not be mixin targets} are handled by different
+ * coprocessors.</p>
  * 
  * <p>These classes were previously encapsulated in a single companion class
  * called <tt>MixinPostProcessor</tt>, but the mixture of responsibilities of
@@ -152,6 +153,25 @@ abstract class MixinCoprocessor implements IListener {
     ProcessResult process(String className, ClassNode classNode) {
         return ProcessResult.NONE;
     }
+
+    private static final ILogger logger = MixinService.getService().getLogger("mixin");
+    private boolean willLogUnimplementedCouldTransform = true;
+    
+    /**
+     * Determine ahead-of-time whether a given class could be transformed ({@link ProcessResult#TRANSFORMED},
+     * {@link ProcessResult#PASSTHROUGH_TRANSFORMED}, or modification in
+     * {@link MixinCoprocessor#postProcess(String, ClassNode)}) by processing by this coprocessor.
+     * 
+     * @param className Name of the target class
+     * @return true if the coprocessor might transform the class when processed
+     */
+    public boolean couldTransform(String className) {
+        if (willLogUnimplementedCouldTransform) {
+            willLogUnimplementedCouldTransform = false;
+            logger.error("MixinCoprocessor {} ({}) does not implement couldTransform, which may lead to unnecessary transformation", getName(), getClass().getName());
+        }
+        return true;
+    } 
 
     /**
      * Perform postprocessing actions on the supplied class. This is called for
