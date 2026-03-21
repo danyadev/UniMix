@@ -544,7 +544,7 @@ public class MixinTargetContext extends ClassContext implements IMixinContext {
             }
         }
         
-        if (Bytecode.isVirtual(method)) {
+        if (this.getEnvironment().getOption(Option.DEBUG_VERIFY) && Bytecode.isVirtual(method)) {
             Method superMethod = this.targetClassInfo.findMethodInHierarchy(method, SearchType.SUPER_CLASSES_ONLY, Traversal.ALL, 0);
             if (superMethod != null && superMethod.isFinal()) {
                 throw new InvalidMixinException(this.mixin, String.format("%s%s in %s overrides a final method from %s",
@@ -600,7 +600,7 @@ public class MixinTargetContext extends ClassContext implements IMixinContext {
         } else if (this.detachedSuper || this.inheritsFromMixin) {
             if (methodRef.getOpcode() == Opcodes.INVOKESPECIAL) {
                 this.updateStaticBinding(method, methodRef);
-            } else if (methodRef.getOpcode() == Opcodes.INVOKEVIRTUAL && ClassInfo.forName(methodRef.getOwner()).isMixin()) {
+            } else if (methodRef.getOpcode() == Opcodes.INVOKEVIRTUAL && methodRef.ownerIsMixin()) {
                 this.updateDynamicBinding(method, methodRef);
             }
         }
@@ -637,9 +637,11 @@ public class MixinTargetContext extends ClassContext implements IMixinContext {
             if (field != null && field.isRenamed() && field.getOriginalName().equals(fieldRef.getName()) && field.isStatic()) {
                 fieldRef.setName(field.getName());
             }
+        } else if (this.innerClasses.containsKey(fieldRef.getOwner())) {
+            fieldRef.setOwner(this.innerClasses.get(fieldRef.getOwner()));
         } else {
-            ClassInfo fieldOwner = ClassInfo.forName(fieldRef.getOwner());
-            if (fieldOwner.isMixin()) {
+            if (ClassInfo.isMixin(fieldRef.getOwner())) {
+                ClassInfo fieldOwner = ClassInfo.forName(fieldRef.getOwner());
                 ClassInfo actualOwner = this.targetClassInfo.findCorrespondingType(fieldOwner);
                 fieldRef.setOwner(actualOwner != null ? actualOwner.getName() : this.getTarget().getClassRef());
             }
@@ -903,7 +905,7 @@ public class MixinTargetContext extends ClassContext implements IMixinContext {
                         + " but is mixin.");
             }
             methodRef.setOwner(superMethod.getImplementor().getName());
-        } else if (ClassInfo.forName(methodRef.getOwner()).isMixin()) {
+        } else if (methodRef.ownerIsMixin()) {
             throw new MixinTransformerError("Error resolving " + methodRef + " in " + this);
         }
     }
@@ -1011,11 +1013,8 @@ public class MixinTargetContext extends ClassContext implements IMixinContext {
             descriptorActivity.end();
             return desc;
         }
-        ClassInfo typeInfo = ClassInfo.forName(type);
-        if (typeInfo == null) {
-            throw new ClassMetadataNotFoundException(type.replace('/', '.'));
-        }
-        if (!typeInfo.isMixin() || typeInfo.isLoadable()) {
+        ClassInfo typeInfo;
+        if (!ClassInfo.isMixin(type) || (typeInfo = ClassInfo.forName(type)).isLoadable()) {
             descriptorActivity.end();
             return desc;
         }
